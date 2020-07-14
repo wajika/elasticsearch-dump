@@ -1,13 +1,13 @@
 var should = require('should') // eslint-disable-line
 var aws4signer = require('../lib/aws4signer')
-var credentialsParent = {options: {awsAccessKeyId: 'key', awsSecretAccessKey: 'secret'}}
-var profileParent = {options: {awsIniFileName: 'file', awsIniFileProfile: 'testing'}}
-var chainParent = {options: {awsChain: true}}
+var credentialsParent = { options: { awsAccessKeyId: 'key', awsSecretAccessKey: 'secret' } }
+var profileParent = { options: { awsIniFileName: 'file', awsIniFileProfile: 'testing' } }
+var chainParent = { options: { awsChain: true } }
 
 describe('aws4signer', function () {
   it('should parse "uri" from request object and add signature, if credentials provided', function () {
     var r = {
-      uri: 'http://127.0.0.1:9200/_search?q=test',
+      uri: 'http://es.aws.amazonaws.com:9200/_search?q=test',
       method: 'GET',
       body: '{"query": { "match_all": {} }, "fields": ["*"], "_source": true }'
     }
@@ -18,7 +18,7 @@ describe('aws4signer', function () {
 
   it('should parse "url" from request object and add signature, if credentials provided', function () {
     var r = {
-      url: 'http://127.0.0.1:9200/_search?q=test',
+      url: 'http://es.aws.amazonaws.com:9200/_search?q=test',
       method: 'GET',
       body: '{"query": { "match_all": {} }, "fields": ["*"], "_source": true }'
     }
@@ -28,7 +28,7 @@ describe('aws4signer', function () {
 
   it('should parse "url" from request object and add signature, if AWS profile info provided', function () {
     var r = {
-      url: 'http://127.0.0.1:9200/_search?q=test',
+      url: 'http://es.aws.amazonaws.com:9200/_search?q=test',
       method: 'GET',
       body: '{"query": { "match_all": {} }, "fields": ["*"], "_source": true }'
     }
@@ -38,7 +38,7 @@ describe('aws4signer', function () {
 
   it('should parse "url" from request object and add signature, if AWS Chain option provided', function () {
     var r = {
-      url: 'http://127.0.0.1:9200/_search?q=test',
+      url: 'http://es.aws.amazonaws.com:9200/_search?q=test',
       method: 'GET',
       body: '{"query": { "match_all": {} }, "fields": ["*"], "_source": true }'
     }
@@ -48,11 +48,11 @@ describe('aws4signer', function () {
 
   it('should not add signature if credential (key, secret) is NOT provided', function () {
     var r = {
-      uri: 'http://127.0.0.1:9200/_search?q=test',
+      uri: 'http://es.aws.amazonaws.com:9200/_search?q=test',
       method: 'GET',
       body: '{"query": { "match_all": {} }, "fields": ["*"], "_source": true }'
     }
-    aws4signer(r, {options: {}})
+    aws4signer(r, { options: {} })
 
     if (r.headers !== undefined) {
       r.headers.should.not.have.property('X-Amz-Date')
@@ -62,11 +62,11 @@ describe('aws4signer', function () {
 
   it('should not add signature if credential (secret or key) is NOT provided', function () {
     var r = {
-      uri: 'http://127.0.0.1:9200/_search?q=test',
+      uri: 'http://es.aws.amazonaws.com:9200/_search?q=test',
       method: 'GET',
       body: '{"query": { "match_all": {} }, "fields": ["*"], "_source": true }'
     }
-    aws4signer(r, {options: {something: 'else'}})
+    aws4signer(r, { options: { something: 'else' } })
 
     if (r.headers !== undefined) {
       r.headers.should.not.have.property('X-Amz-Date')

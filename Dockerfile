@@ -1,6 +1,12 @@
-FROM node:10-alpine
-LABEL maintainer="evan@evantahler.com"
+FROM node:12-alpine
+LABEL maintainer="ferronrsmith@gmail.com"
+
+ENV NODE_ENV production
 
 RUN npm install elasticdump -g
 
-ENTRYPOINT ["elasticdump"]
+COPY docker-entrypoint.sh /usr/local/bin/
+
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+CMD ["elasticdump"]

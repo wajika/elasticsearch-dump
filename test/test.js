@@ -14,12 +14,12 @@ const baseUrl = 'http://127.0.0.1:9200'
 
 const seeds = {}
 const seedSize = 500
-const testTimeout = seedSize * 100
+const testTimeout = seedSize * 200
 let i = 0
 let indexesExistingBeforeSuite = 0
 
 while (i < seedSize) {
-  seeds[i] = {key: ('key' + i)}
+  seeds[i] = { key: ('key' + i) }
   i++
 }
 
@@ -31,16 +31,16 @@ const request = require('request').defaults({
 })
 
 const seed = (index, type, settings, callback) => {
-  const payload = {url: baseUrl + '/' + index, body: JSON.stringify(settings)}
+  const payload = { url: baseUrl + '/' + index, body: JSON.stringify(settings) }
   request.put(payload, (err, response) => { // create the index first with potential custom analyzers before seeding
     should.not.exist(err)
     let started = 0
-    for (let key in seeds) {
+    for (const key in seeds) {
       started++
       const s = seeds[key]
-      s['_uuid'] = key
+      s._uuid = key
       const url = baseUrl + '/' + index + '/' + type + '/' + key
-      request.put(url, {body: JSON.stringify(s)}, (err, response, body) => {
+      request.put(url, { body: JSON.stringify(s) }, (err, response, body) => {
         should.not.exist(err)
         started--
         if (started === 0) {
@@ -51,6 +51,14 @@ const seed = (index, type, settings, callback) => {
         }
       })
     }
+  })
+}
+
+const loadTemplate = (templateName, templateBody, callback) => {
+  const payload = { url: baseUrl + '/_template/' + templateName, body: JSON.stringify(templateBody) }
+  request.put(payload, (err, response) => { // create the index first with potential custom analyzers before seeding
+    should.not.exist(err)
+    callback()
   })
 }
 
@@ -89,22 +97,40 @@ describe('ELASTICDUMP', () => {
     this.timeout(testTimeout)
     clear(() => {
       const settings = {
-        'settings': {
-          'analysis': {
-            'analyzer': {
-              'content': {
-                'type': 'custom',
-                'tokenizer': 'whitespace'
+        settings: {
+          analysis: {
+            analyzer: {
+              content: {
+                type: 'custom',
+                tokenizer: 'whitespace'
               }
             }
           }
         }
-      } // settings for index to be created with
-      seed('source_index', 'seeds', settings, () => {
-        seed('another_index', 'seeds', undefined, () => {
-          setTimeout(() => {
-            done()
-          }, 500)
+      }
+
+      const isNew = /[6-9]\.\d+\..+/.test(process.env.ES_VERSION)
+
+      const templateSettings = {
+        [isNew ? 'index_patterns' : 'template']: isNew ? [
+          'source_index',
+          'another_index',
+          'destination_index'
+        ] : '*_index',
+        settings: {
+          number_of_shards: 1,
+          number_of_replicas: 0
+        }
+      }
+
+      // settings for index to be created with
+      loadTemplate('template_1', templateSettings, () => {
+        seed('source_index', 'seeds', settings, () => {
+          seed('another_index', 'seeds', undefined, () => {
+            setTimeout(() => {
+              done()
+            }, 500)
+          })
         })
       })
     })
@@ -143,9 +169,9 @@ describe('ELASTICDUMP', () => {
   })
 
   it('sets User-Agent', function (done) {
-    const Elasticsearch = require(path.join(__dirname, '../lib/transports', 'elasticsearch'))['elasticsearch']
+    const Elasticsearch = require(path.join(__dirname, '../lib/transports', 'elasticsearch')).elasticsearch
     this.timeout(testTimeout)
-    const parent = {options: {searchBody: 'none'}}
+    const parent = { options: { searchBody: 'none' } }
     const es = (new Elasticsearch(parent, baseUrl, 'source_index'))
     es.baseRequest(baseUrl, (err, response, body) => {
       should.not.exist(err)
@@ -155,9 +181,9 @@ describe('ELASTICDUMP', () => {
   })
 
   it('sets custom headers', function (done) {
-    const Elasticsearch = require(path.join(__dirname, '../lib/transports', 'elasticsearch'))['elasticsearch']
+    const Elasticsearch = require(path.join(__dirname, '../lib/transports', 'elasticsearch')).elasticsearch
     this.timeout(testTimeout)
-    const parent = {options: {searchBody: 'none'}}
+    const parent = { options: { searchBody: 'none' } }
     const opts = {
       index: 'source_index',
       headers: {
@@ -177,7 +203,7 @@ describe('ELASTICDUMP', () => {
   })
 
   it('sets custom params', function (done) {
-    const Elasticsearch = require(path.join(__dirname, '../lib/transports', 'elasticsearch'))['elasticsearch']
+    const Elasticsearch = require(path.join(__dirname, '../lib/transports', 'elasticsearch')).elasticsearch
     this.timeout(testTimeout)
     const parent = {
       options: {
@@ -186,6 +212,9 @@ describe('ELASTICDUMP', () => {
         params: {
           preference: '_shards:0'
         }
+      },
+      emit: (level, msg) => {
+        console[level](msg)
       }
     }
     const opts = {
@@ -344,7 +373,7 @@ describe('ELASTICDUMP', () => {
         input: baseUrl + '/source_index/seeds',
         output: baseUrl + '/destination_index',
         scrollTime: '10m',
-        searchBody: {'query': {'term': {'key': 'key1'}}}
+        searchBody: { query: { term: { key: 'key1' } } }
       }
 
       const dumper = new Elasticdump(options.input, options.output, options)
@@ -371,7 +400,7 @@ describe('ELASTICDUMP', () => {
         input: baseUrl + '/source_index/seeds',
         output: baseUrl + '/destination_index',
         scrollTime: '10m',
-        searchBody: {'query': {'range': {'_uuid': {'lte': '2'}}}}
+        searchBody: { query: { range: { _uuid: { lte: '2' } } } }
       }
 
       const dumper = new Elasticdump(options.input, options.output, options)
@@ -792,7 +821,7 @@ describe('ELASTICDUMP', () => {
 
         // "key" should be immediately available
         const first = JSON.parse(lines[0])
-        first['key'].length.should.be.above(0)
+        first.key.length.should.be.above(0)
         done()
       })
     })
@@ -889,19 +918,112 @@ describe('ELASTICDUMP', () => {
           const url = baseUrl + '/bigint_index/_search'
           request.get(url, (err, response, body) => {
             should.not.exist(err)
-            body = jsonParser.parse(body, {options})
+            body = jsonParser.parse(body, { options })
             body.hits.hits.length.should.equal(4)
             _.chain(body.hits.hits)
               .reduce((result, value) => {
-                result.push(value['_source']['key'].toString())
+                result.push(value._source.key.toString())
                 return result
               }, [])
               .sort()
               .value().should.deepEqual([
+                '+99926275868403174267',
                 '-99926275868403174266',
                 '1726275868403174266',
-                '99926275868403174266',
-                '99926275868403174267'])
+                '99926275868403174266'])
+            done()
+          })
+        })
+      })
+    })
+  })
+
+  describe('big int 2 file to es', () => {
+    it('works', function (done) {
+      this.timeout(testTimeout)
+
+      let options = {
+        limit: 100,
+        offset: 0,
+        debug: false,
+        type: 'mapping',
+        input: path.join(__dirname, 'test-resources', 'bigint_mapping2.json'),
+        output: baseUrl + '/bigint2_index',
+        scrollTime: '10m'
+      }
+
+      let dumper = new Elasticdump(options.input, options.output, options)
+
+      dumper.dump(() => {
+        options = {
+          limit: 100,
+          offset: 0,
+          debug: false,
+          type: 'data',
+          input: path.join(__dirname, 'test-resources', 'bigint2.json'),
+          output: baseUrl + '/bigint2_index',
+          scrollTime: '10m',
+          'support-big-int': true,
+          'big-int-fields': 'guid'
+        }
+
+        dumper = new Elasticdump(options.input, options.output, options)
+
+        dumper.dump(() => {
+          const url = baseUrl + '/bigint2_index/_search'
+          request.get(url, (err, response, body) => {
+            should.not.exist(err)
+            body = jsonParser.parse(body, { options })
+            body.hits.hits.length.should.equal(1)
+            const rec = body.hits.hits[0]
+            rec._source.guid.toString().should.eql('647200872369')
+            rec._source.nickname.should.eql('01234567891011121314151617181920')
+            done()
+          })
+        })
+      })
+    })
+  })
+
+  describe('big int 3 file to es', () => {
+    it('works', function (done) {
+      this.timeout(testTimeout)
+
+      let options = {
+        limit: 100,
+        offset: 0,
+        debug: false,
+        type: 'mapping',
+        input: path.join(__dirname, 'test-resources', 'bigint_mapping3.json'),
+        output: baseUrl + '/bigint3_index',
+        scrollTime: '10m'
+      }
+
+      let dumper = new Elasticdump(options.input, options.output, options)
+
+      dumper.dump(() => {
+        options = {
+          limit: 100,
+          offset: 0,
+          debug: false,
+          type: 'data',
+          input: path.join(__dirname, 'test-resources', 'bigint3.json'),
+          output: baseUrl + '/bigint3_index',
+          scrollTime: '10m',
+          'support-big-int': true
+        }
+
+        dumper = new Elasticdump(options.input, options.output, options)
+
+        dumper.dump(() => {
+          const url = baseUrl + '/bigint3_index/_search'
+          request.get(url, (err, response, body) => {
+            should.not.exist(err)
+            body = jsonParser.parse(body, { options })
+            body.hits.hits.length.should.equal(1)
+            const rec = body.hits.hits[0]
+            rec._source.guid.should.eql('+01234567891011121314151617181920')
+            rec._source.nickname.should.eql('01234567891011121314151617181920')
             done()
           })
         })
@@ -947,9 +1069,9 @@ describe('ELASTICDUMP', () => {
           })
 
           let count = 0
-          for (let i in output) {
+          for (const i in output) {
             const elem = output[i]
-            if (elem['_index'] === 'source_index' || elem['_index'] === 'another_index') {
+            if (elem._index === 'source_index' || elem._index === 'another_index') {
               count++
             }
           }
